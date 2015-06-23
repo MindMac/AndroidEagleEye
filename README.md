@@ -87,6 +87,7 @@ Described as following:
 3. The parameters and return type can be left blank to hook all the APIs or methods with the same method name. For example, you can configure the content line as below to hook all the *putExtra* methods under [Intent](http://developer.android.com/reference/android/content/Intent.html) class:
 	* Landroid/content/Intent;->putExtra
 	
+**Make sure the system_apis.config and app_apis.config is readable for the application. Use *chmod* command if needed.**
 Refer to the configure files under the [testcase_configs](testcase_configs) for more detail.
 
 Log Format
