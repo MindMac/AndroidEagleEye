@@ -23,7 +23,7 @@ Contents
 Usage
 --------
 
-** Ensure you have root access and have installed [XposedInstaller](http://repo.xposed.info/module/de.robv.android.xposed.installer)**
+** Ensure you have root access and have installed [XposedInstaller](http://repo.xposed.info/module/de.robv.android.xposed.installer) **
 
 Follow the steps below:
 
