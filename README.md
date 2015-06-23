@@ -23,7 +23,7 @@ Contents
 Usage
 --------
 
-** Ensure you have root access and have installed [XposedInstaller](http://repo.xposed.info/module/de.robv.android.xposed.installer) **
+**Ensure you have root access and have installed [XposedInstaller](http://repo.xposed.info/module/de.robv.android.xposed.installer)**
 
 Follow the steps below:
 
@@ -38,7 +38,7 @@ Follow the steps below:
 5. **Restart** the applications you want to hook (EagleEye will read the *rw.eagleeye.targetuids* property whenever the application loaded, so if you want to hook other applications, you only need set this property to the appropriate value and restart the applications)
 6. Use *adb logcat -s EagleEye:I* to see the log information
 
-** EagleEye has predefined some Android system APIs to hook by default(refer to the classes under *com.mindmac.eagleeye.hookclass* package), if you want to hook other system APIs or applications' methods, you can configure as following: **
+**EagleEye has predefined some Android system APIs to hook by default(refer to the classes under *com.mindmac.eagleeye.hookclass* package), if you want to hook other system APIs or applications' methods, you can configure as following:**
 
 1. The Android system APIs can be customized by the [**system_apis.config**](#Configure File Format) . Please push this configure file to the Android device's directory **/data/local/tmp/**. The default number of APIs you can customize is limited to 500, and you can set the property **rw.eagleeye.system_api_num** to the value as you want.
 2. The application's methods can be customized by the [**app_apis.config**](#Configure File Format). Please push this configure file to the Android device's directory **/data/data/\<package name of the application you want to hook\>/**. The default number of methods you can customize is limited to 500, and you can set the property **rw.eagleeye.app_api_num** to the value as you want.
