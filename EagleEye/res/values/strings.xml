@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">EagleEye</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="app_description">Android EagleEye-API Hooking</string>
+    
+    <string name="msg_init">Environment Initializing &#8230;</string>
+    <string name="msg_init_success">Environment Initialization Success!</string>
+    <string name="msg_init_fail">Environment Initialization Fail!</string>
+
+</resources>
