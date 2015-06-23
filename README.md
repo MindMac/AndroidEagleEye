@@ -40,8 +40,8 @@ Follow the steps below:
 
 **EagleEye has predefined some Android system APIs to hook by default(refer to the classes under *com.mindmac.eagleeye.hookclass* package), if you want to hook other system APIs or applications' methods, you can configure as following:**
 
-1. The Android system APIs can be customized by the **system_apis.config** (Refer to *Configure File Format* for detail). Please push this configure file to the Android device's directory **/data/local/tmp/**. The default number of APIs you can customize is limited to 500, and you can set the property **rw.eagleeye.system_api_num** to the value as you want.
-2. The application's methods can be customized by the **app_apis.config**  (Refer to *Configure File Format* for detail). Please push this configure file to the Android device's directory **/data/data/\<package name of the application you want to hook\>/**. The default number of methods you can customize is limited to 500, and you can set the property **rw.eagleeye.app_api_num** to the value as you want.
+1. The Android system APIs can be customized by the **system_apis.config** (Refer to *Configure File Format* section for detail). Please push this configure file to the Android device's directory **/data/local/tmp/**. The default number of APIs you can customize is limited to 500, and you can set the property **rw.eagleeye.system_api_num** to the value as you want.
+2. The application's methods can be customized by the **app_apis.config**  (Refer to *Configure File Format* section for detail). Please push this configure file to the Android device's directory **/data/data/\<package name of the application you want to hook\>/**. The default number of methods you can customize is limited to 500, and you can set the property **rw.eagleeye.app_api_num** to the value as you want.
 3. **Restart** the application you want to hook (EagleEye will reload the configure files when the application loaded).
 
 
