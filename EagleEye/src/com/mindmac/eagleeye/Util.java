@@ -2,9 +2,7 @@ package com.mindmac.eagleeye;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -17,47 +15,46 @@ import android.content.res.AssetManager;
 import android.os.Environment;
 
 public class Util {
-	public static final String SELF_PACKAGE_NAME = "com.mindmac.eagleye";
+	public static final String SELF_PACKAGE_NAME = "com.mindmac.eagleeye";
 	public static final String LOG_TAG = "EagleEye";
 	
-	public static final String TARGET_UIDS_PROP_KEY = "rw.eagleeye.targetuids";
-	public static HashMap<Integer, Boolean> TARGET_UIDS_PROP_VAL_MAP = new 
+	public static final String NATIVE_LIB = "eagleeyenative";
+	public static final String NATIVE_LIB_PATH = String.format("/data/data/%s/lib/lib%s.so", 
+		Util.SELF_PACKAGE_NAME, Util.NATIVE_LIB);
+	
+	// Native Hook
+	public static final String NATIVE_UIDS_PROP_KEY = "rw.eagleeye.nt.uids";
+	public static final String CUSTOM_NATIVE_LIB_NAMES_CONFIG = "native_lib.config";
+	public static final HashMap<Integer, Boolean> NATIVE_UIDS_MAP = new 
+			HashMap<Integer, Boolean>();
+	public static final HashMap<String, Boolean> CUSTOM_NATIVE_LIB_NAMES_MAP = new
+			HashMap<String, Boolean>();
+	
+	// Java framework Hook
+	public static final String FRAMEWORK_UIDS_PROP_KEY = "rw.eagleeye.fr.uids";
+	public static HashMap<Integer, Boolean> FRAMEWORK_UIDS_MAP = new 
 			HashMap<Integer, Boolean>();
 	
-	// System api to be hooked
-	public static final String SYSTEM_API_NUM_PROP_KEY = "rw.eagleeye.system_api_num";
-	public static int SYSTEM_API_NUM = 500;
+	public static final String FRAMEWORK_SYSTEM_API_NUM_PROP_KEY = "rw.eagleeye.fr.sys_api_num";
+	public static int FRAMEWORK_SYSTEM_API_NUM = 500;
 	
-	public static final String SYSTEM_API_HOOK_CONFIG = "system_apis.config";
-	public static ArrayList<String> SYSTEM_UN_HOOKED_APIS = new ArrayList<String>();
+	public static final String FRAMEWORK_SYSTEM_API_HOOK_CONFIG = "fr_sys_apis.config";
+	public static ArrayList<String> FRAMEWORK_SYSTEM_UN_HOOKED_APIS = new ArrayList<String>();
 
 	
-	// Non system api to be hooked 
-	public static final String APP_API_NUM_PROP_KEY = "rw.eagleeye.app_api_num";
-	public static int APP_API_NUM = 500;
+	public static final String FRAMEWORK_APP_API_NUM_PROP_KEY = "rw.eagleeye.fr.app_api_num";
+	public static int FRAMEWORK_APP_API_NUM = 500;
 
-	public static final String APP_API_HOOK_CONFIG = "app_apis.config";
-	public static ArrayList<String> APP_UN_HOOKED_APIS = new ArrayList<String>();
+	public static final String FRAMEWORK_APP_API_HOOK_CONFIG = "fr_app_apis.config";
+	public static ArrayList<String> FRAMEWORK_APP_UN_HOOKED_APIS = new ArrayList<String>();
 	
 	public static final int ANDROID_UID = android.os.Process.SYSTEM_UID;
 	
-	public static final String HOOK_SYSTEM_API = "system_api";
-	public static final String HOOK_APP_API = "app_api";
-	
-	public static final String DEXFD2PATH = "fd2path.dex";
-	public static final String LIBFD2PATH = "libfd2path.so";
-	public static final String PATH_CONVERTOR_CLASS = "com.mindmac.filepath.PathConvertor";
-	public static final String LOG_FILE_PATH_METHOD_NAME = "logFilePath";
-	
-	public static Class<?> pathConvertorClass = null;
-	public static Method logFilePathMethod = null;
-	
+	public static final int FRAMEWORK_HOOK_SYSTEM_API = 0x00;
+	public static final int FRAMEWORK_HOOK_APP_API = 0x01;
+			
 	public static int DATA_BYTES_TO_LOG = 768;
-	
-	// No use currently
-	public static boolean ENABLE_LOG;
-	
-	
+		
 	public static ArrayList<String> copyArrayList(ArrayList<String> srcArrayList){
 		ArrayList<String> dstArrayList = new ArrayList<String>();
 		for(String ele : srcArrayList)
@@ -86,23 +83,42 @@ public class Util {
 		return  hexString.toString();
 	}	
 	
-	public static void getAppNeedLogProperty(){
-		String targetUids = getSystemProperty(Util.TARGET_UIDS_PROP_KEY);
+	public static void storeNativeLogAppUids(){
+		String targetUids = getSystemProperty(Util.NATIVE_UIDS_PROP_KEY);
 		if(targetUids != null)
 			try{
 				String[] targetUidArray = targetUids.split("\\|");
 				for(String targetUid : targetUidArray){
 					targetUid = targetUid.trim();
-					TARGET_UIDS_PROP_VAL_MAP.put(Integer.parseInt(targetUid), true);
+					Util.NATIVE_UIDS_MAP.put(Integer.parseInt(targetUid), true);
 				}
 			}catch(Exception ex){
 				ex.printStackTrace();
 			}
 	}
 	
-	public static boolean isAppNeedLog(int uid){
-		return TARGET_UIDS_PROP_VAL_MAP.containsKey(uid);
+	public static void storeFrameworkLogAppUids(){
+		String targetUids = getSystemProperty(Util.FRAMEWORK_UIDS_PROP_KEY);
+		if(targetUids != null)
+			try{
+				String[] targetUidArray = targetUids.split("\\|");
+				for(String targetUid : targetUidArray){
+					targetUid = targetUid.trim();
+					Util.FRAMEWORK_UIDS_MAP.put(Integer.parseInt(targetUid), true);
+				}
+			}catch(Exception ex){
+				ex.printStackTrace();
+			}
 	}
+	
+	public static boolean isAppNeedNtLog(int uid){
+		return Util.NATIVE_UIDS_MAP.containsKey(uid);
+	}
+
+	public static boolean isAppNeedFrLog(int uid){
+		return Util.FRAMEWORK_UIDS_MAP.containsKey(uid);
+	}
+	
 
 	
 	public static String getSystemProperty(String propertyKey){
@@ -173,28 +189,28 @@ public class Util {
 		}
 	}
 	
-	public static void execSuCmd(String cmd){
-		Process process = null;
-        OutputStream out = null;
-        
-        try {
-            process = Runtime.getRuntime().exec("su");
-            out = process.getOutputStream();
-            out.write((cmd + "\n").getBytes());
-            out.write("exit\n".getBytes());
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } catch (Exception ex) {
-           ex.printStackTrace();
-        } finally {
-            try {
-                out.flush();
-                out.close();
-            } catch (Exception ex) {
-               ex.printStackTrace();
-            }
-        }
-	}
+//	public static void execSuCmd(String cmd){
+//		Process process = null;
+//        OutputStream out = null;
+//        
+//        try {
+//            process = Runtime.getRuntime().exec("su");
+//            out = process.getOutputStream();
+//            out.write((cmd + "\n").getBytes());
+//            out.write("exit\n".getBytes());
+//        } catch (IOException ex) {
+//            ex.printStackTrace();
+//        } catch (Exception ex) {
+//           ex.printStackTrace();
+//        } finally {
+//            try {
+//                out.flush();
+//                out.close();
+//            } catch (Exception ex) {
+//               ex.printStackTrace();
+//            }
+//        }
+//	}
 	
 	public static String parseParameterTypes(Method method) {
 		String parameterTypes = "";

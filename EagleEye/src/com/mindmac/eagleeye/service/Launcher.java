@@ -3,6 +3,7 @@ package com.mindmac.eagleeye.service;
 import static de.robv.android.xposed.XposedHelpers.findClass;
 
 import com.mindmac.eagleeye.MethodParser;
+import com.mindmac.eagleeye.NativeEntry;
 import com.mindmac.eagleeye.Util;
 import com.mindmac.eagleeye.hookclass.*;
 
@@ -19,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,6 +29,7 @@ import android.content.pm.ApplicationInfo;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Process;
+import android.text.TextUtils;
 import android.util.Log;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.IXposedHookZygoteInit;
@@ -70,7 +71,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 					try {
 						if (Process.myUid() <= 0)
 								return;
-							after(param, Util.HOOK_APP_API);
+							after(param, Util.FRAMEWORK_HOOK_APP_API);
 						} catch (Throwable ignore) {
 						}
 			}
@@ -83,7 +84,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 					try {
 						if (Process.myUid() <= 0)
 								return;
-							after(param, Util.HOOK_SYSTEM_API);
+							after(param, Util.FRAMEWORK_HOOK_SYSTEM_API);
 						} catch (Throwable ignore) {
 						}
 			}
@@ -95,10 +96,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 
 
 	// Hook System APIs
-	private void hookSystemApis(){
-		// Application
-		hookAll(ApplicationHook.getMethodHookList());
-		
+	private void hookSystemApis(){		
 		// AbstractHttpClient
 		hookAll(AbstractHttpClientHook.getMethodHookList());
 		
@@ -114,9 +112,6 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 		// AudioRecord
 		hookAll(AudioRecordHook.getMethodHookList());
 		
-		// BaseDexClassLoader
-		hookAll(BaseDexClassLoaderHook.getMethodHookList());
-				
 		// BluetoothAdapter
 		hookAll(BluetoothAdapterHook.getMethodHookList());
 		
@@ -125,10 +120,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 		
 		// BroadcastReceiver
 		hookAll(BroadcastReceiverHook.getMethodHookList());
-		
-		// ClassLoader
-		//hookAll(ClassLoaderHook.getMethodHookList());
-		
+				
 		// Cipher
 		hookAll(CipherHook.getMethodHookList());
 				
@@ -151,7 +143,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 		hookAll(InstrumentationHook.getMethodHookList());
 		
 		// IoBridge
-		hookAll(IoBridgeHook.getMethodHookList());
+		// hookAll(IoBridgeHook.getMethodHookList());
 		
 		// MediaRecord
 		hookAll(MediaRecorderHook.getMethodHookList());
@@ -164,10 +156,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 		
 		// Process
 		hookAll(ProcessHook.getMethodHookList());
-				
-		// Runtime
-		hookAll(RuntimeHook.getMethodHookList());
-		
+						
 		//SystemProperties
 		hookAll(SystemPropertiesHook.getMethodHookList());
 		
@@ -185,6 +174,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 				
 		// WebView
 		hookAll(WebViewHook.getMethodHookList());
+		
 		
 	}
 		
@@ -249,65 +239,103 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 	
 	// Call when package loaded
 	public void handleLoadPackage(final LoadPackageParam lpparam) throws Throwable {
-					
 		ApplicationInfo appInfo = lpparam.appInfo;
 		if(appInfo == null)
 			return;
-		
-		// Get the uids for the applications which need log
-		Util.getAppNeedLogProperty();
-		if(!Util.isAppNeedLog(appInfo.uid))
+		if((appInfo.flags & (ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) !=0)
+			return;
+		if(appInfo.packageName.equals("de.robv.android.xposed.installer") || 
+			appInfo.packageName.equals(Util.SELF_PACKAGE_NAME))
 			return;
 		
+		// Get the uids for the applications which need log
+		Util.storeNativeLogAppUids();
+		Util.storeFrameworkLogAppUids();
+		
+		if(Util.isAppNeedNtLog(appInfo.uid)){
+			if(lpparam.isFirstApplication){
+				// Set customized native hook lib names
+				setCustomNativeHookLibNames(appInfo.packageName);
+
+				// Hook findLibrary method to invoke the native lib
+				hookAll(BaseDexClassLoaderHook.getMethodHookList());
+				
+				// Hook Application to hook system native lib
+				hookAll(ApplicationHook.getMethodHookList());
+
+				// Hook Runtime to hook custom native lib
+				hookAll(RuntimeHook.getMethodHookList());
+			}
+		}
+		
+		if(!Util.isAppNeedFrLog(appInfo.uid))
+			return;
+			
 		// Anti anti emulator
 		hookBuildFields();
 		
 		// Hook classloader
 		hookAll(ClassLoaderHook.getMethodHookList());
 		
+		// Hook IO
+		// Waring: do not hook this class at the beginning of zygote init, 
+		// or it will cause UnsatisfiedLinkException when load libnative.so
+		hookAll(IoBridgeHook.getMethodHookList());
+		
 		// Hook customized apis
 		hookCustomizedSystemApis();
 		hookCustomizedAppApis(appInfo.packageName, lpparam.classLoader);
+		
 	}
 	
 	// Hook customized system apis
 	private static void hookCustomizedSystemApis(){
-		File systemApiConfigFile = new File(String.format("/data/local/tmp/%s", Util.SYSTEM_API_HOOK_CONFIG));
+		File systemApiConfigFile = new File(String.format("/data/local/tmp/%s", 
+				Util.FRAMEWORK_SYSTEM_API_HOOK_CONFIG));
 		if(!systemApiConfigFile.exists())
 			return;
 				
-		Util.SYSTEM_API_NUM = getSystemApiNumLimit();
-		Util.SYSTEM_UN_HOOKED_APIS = readApiConfig(systemApiConfigFile.getAbsolutePath(), Util.SYSTEM_API_NUM);
-		ArrayList<String> tmpUnHookedApis = Util.copyArrayList(Util.SYSTEM_UN_HOOKED_APIS);
+		Util.FRAMEWORK_SYSTEM_API_NUM = getSystemApiNumLimit();
+		Util.FRAMEWORK_SYSTEM_UN_HOOKED_APIS = readApiConfig(systemApiConfigFile.getAbsolutePath(), 
+				Util.FRAMEWORK_SYSTEM_API_NUM);
+		ArrayList<String> tmpUnHookedApis = Util.copyArrayList(Util.FRAMEWORK_SYSTEM_UN_HOOKED_APIS);
 		
 		for(String methodInfo : tmpUnHookedApis){
 			Log.d(Util.LOG_TAG, "hook customized system apis: " + methodInfo);
-			if(hookCustomize(methodInfo, null, Util.HOOK_SYSTEM_API))
-				Util.SYSTEM_UN_HOOKED_APIS.remove(methodInfo);
+			if(hookCustomize(methodInfo, null, Util.FRAMEWORK_HOOK_SYSTEM_API))
+				Util.FRAMEWORK_SYSTEM_UN_HOOKED_APIS.remove(methodInfo);
 		}
 	}
 	
 	// Hook customized app apis
+	private static void setCustomNativeHookLibNames(String packageName){
+		File nativeLibNamesConfig = new File(String.format("/data/data/%s/%s", 
+				packageName, Util.CUSTOM_NATIVE_LIB_NAMES_CONFIG));
+		if(!nativeLibNamesConfig.exists())
+			return;
+		storeNativeLibNames(nativeLibNamesConfig.getAbsolutePath());
+	}
+	
 	private static void hookCustomizedAppApis(String packageName, ClassLoader classLoader){
 		File appApiConfigFile = new File(String.format("/data/data/%s/%s", 
-				packageName, Util.APP_API_HOOK_CONFIG));
+				packageName, Util.FRAMEWORK_APP_API_HOOK_CONFIG));
 		if(!appApiConfigFile.exists())
 			return;
 				
-		Util.APP_API_NUM = getAppApiNumLimit();
-		Util.APP_UN_HOOKED_APIS = readApiConfig(appApiConfigFile.getAbsolutePath(), Util.APP_API_NUM);
-		ArrayList<String> tmpUnHookedApis = Util.copyArrayList(Util.APP_UN_HOOKED_APIS);
+		Util.FRAMEWORK_APP_API_NUM = getAppApiNumLimit();
+		Util.FRAMEWORK_APP_UN_HOOKED_APIS = readApiConfig(appApiConfigFile.getAbsolutePath(), 
+				Util.FRAMEWORK_APP_API_NUM);
+		ArrayList<String> tmpUnHookedApis = Util.copyArrayList(Util.FRAMEWORK_APP_UN_HOOKED_APIS);
 		
 		for(String methodInfo : tmpUnHookedApis){
-			Log.d(Util.LOG_TAG, "hook customized app apis:" + methodInfo);
-			if(hookCustomize(methodInfo, classLoader, Util.HOOK_APP_API))
-				Util.APP_UN_HOOKED_APIS.remove(methodInfo);
+			if(hookCustomize(methodInfo, classLoader, Util.FRAMEWORK_HOOK_APP_API))
+				Util.FRAMEWORK_APP_UN_HOOKED_APIS.remove(methodInfo);
 		}
 	}
 	
 	private static int getSystemApiNumLimit(){
-		int systemApiNumLimit = Util.SYSTEM_API_NUM;
-		String systemApiNumLimitVal = Util.getSystemProperty(Util.SYSTEM_API_NUM_PROP_KEY);
+		int systemApiNumLimit = Util.FRAMEWORK_SYSTEM_API_NUM;
+		String systemApiNumLimitVal = Util.getSystemProperty(Util.FRAMEWORK_APP_API_NUM_PROP_KEY);
 		if(systemApiNumLimitVal != null){
 			try{
 				systemApiNumLimit = Integer.parseInt(systemApiNumLimitVal.trim());
@@ -320,8 +348,8 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 	}
 	
 	private static int getAppApiNumLimit(){
-		int appApiNumLimit = Util.APP_API_NUM;
-		String appApiNumLimitVal = Util.getSystemProperty(Util.APP_API_NUM_PROP_KEY);
+		int appApiNumLimit = Util.FRAMEWORK_APP_API_NUM;
+		String appApiNumLimitVal = Util.getSystemProperty(Util.FRAMEWORK_APP_API_NUM_PROP_KEY);
 		if(appApiNumLimitVal != null){
 			try{
 				appApiNumLimit = Integer.parseInt(appApiNumLimitVal.trim());
@@ -400,6 +428,30 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 		}
 	}
 	
+	// Got customized hook native lib names
+	private static void storeNativeLibNames(String filePath){
+		BufferedReader reader = null;
+		try{
+			reader = new BufferedReader(new FileReader(filePath));
+			String data = null;
+			while((data = reader.readLine()) != null){
+				data = data.trim();
+				if(!Util.CUSTOM_NATIVE_LIB_NAMES_MAP.containsKey(data)){
+					Util.CUSTOM_NATIVE_LIB_NAMES_MAP.put(data, true);
+				}
+			}
+		}catch(Exception ex){
+			ex.printStackTrace();
+		}finally{
+			if(reader != null)
+				try {
+					reader.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+		}
+	}
+
 	// Hook customized methods
 	private static ArrayList<String> readApiConfig(String filePath, int apiNumLimit){
 		ArrayList<String> apiConfigList = new ArrayList<String>();
@@ -435,7 +487,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 	}
 	
 	// Hook constructors for customized API configure
-	private static void hookCustomizeConstructors(Class<?> hookClass, String[] methodInfoItems, String hookType){
+	private static void hookCustomizeConstructors(Class<?> hookClass, String[] methodInfoItems, int hookType){
 		String parameterTypes = methodInfoItems[2];
 		for(Constructor<?> constructor : hookClass.getDeclaredConstructors()){
 			try{
@@ -447,9 +499,9 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 					else
 						match = false;
 				if(match){
-					if(hookType.equals(Util.HOOK_APP_API))
+					if(hookType == Util.FRAMEWORK_HOOK_APP_API)
 						XposedBridge.hookMethod(constructor, xcMethodHookApp);
-					else if(hookType.equals(Util.HOOK_SYSTEM_API))
+					else if(hookType == Util.FRAMEWORK_HOOK_SYSTEM_API)
 						XposedBridge.hookMethod(constructor, xcMethodHookSystem);
 				}
 				
@@ -460,7 +512,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 	}
 	
 	// Hook methods for customized API configure
-	private static void hookCustomizeMethods(Class<?> hookClass,  String[] methodInfoItems, String hookType){
+	private static void hookCustomizeMethods(Class<?> hookClass,  String[] methodInfoItems, int hookType){
 		String methodName = methodInfoItems[1];
 		String parameterTypes = methodInfoItems[2];
 		String returnType = methodInfoItems[3];
@@ -484,9 +536,10 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 							match = false;
 						
 					if(match){
-						if(hookType.equals(Util.HOOK_APP_API))
+						Log.d(Util.LOG_TAG, "hook customized method: " + hookClass.getName() + "." + methodName);
+						if(hookType == Util.FRAMEWORK_HOOK_APP_API)
 							XposedBridge.hookMethod(method, xcMethodHookApp);
-						else if(hookType.equals(Util.HOOK_SYSTEM_API))
+						else if(hookType == Util.FRAMEWORK_HOOK_SYSTEM_API)
 							XposedBridge.hookMethod(method, xcMethodHookSystem);
 					}
 				}
@@ -497,7 +550,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 	}
 	
 	// methodInfo is in the format Lcom/example/class;->Fun(Ljava/lang/String;)Ljava/lang/String;
-	public static boolean hookCustomize(String methodInfo, ClassLoader classLoader, String hookType){
+	public static boolean hookCustomize(String methodInfo, ClassLoader classLoader, int hookType){
 		boolean methodHooked = false;
 		String[] methodInfoItems = parseMethodInfo(methodInfo);
 		
@@ -529,6 +582,37 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 			}
 		}else
 			Log.d(Util.LOG_TAG, className + " not found");
+		
+		return methodHooked;
+	}
+	
+	public static boolean hookCustomizeWithKnownClass(String methodInfo, Class<?> loadedClass, int hookType){
+		boolean methodHooked = false;
+		String[] methodInfoItems = parseMethodInfo(methodInfo);
+		
+		String className = methodInfoItems[0];
+		String methodName = methodInfoItems[1];
+		if(!loadedClass.getName().equals(className)){
+			Log.d(Util.LOG_TAG, "loaded class not equal: " + className + " : " + loadedClass.getName());
+			return methodHooked;
+		}else
+			Log.d(Util.LOG_TAG, "unhooked class: " + className + ":" + methodName);
+								
+		if (loadedClass != null && methodName != null) {
+			String shortClassName = className;
+			if(className.lastIndexOf(".") != -1){
+				shortClassName = className.substring(className.lastIndexOf(".")+1);
+			}
+			// Hook constructors
+			if(shortClassName.equals(methodName)){
+				hookCustomizeConstructors(loadedClass, methodInfoItems, hookType);
+				methodHooked = true;
+			}else{
+				// Hook methods
+				hookCustomizeMethods(loadedClass, methodInfoItems, hookType);
+				methodHooked = true;
+			}
+		}
 		
 		return methodHooked;
 	}
@@ -574,13 +658,13 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 		return methodInfoItems;
 	}
 	
-	private static void after(MethodHookParam param, String hookType){
+	private static void after(MethodHookParam param, int hookType){
 		int uid = Binder.getCallingUid();
-		if(Util.isAppNeedLog(uid))
+		if(Util.isAppNeedFrLog(uid))
 			logMethod(param, uid, hookType);
 	}
 	
-	private static void logMethod(MethodHookParam param, int uid, String hookType){
+	private static void logMethod(MethodHookParam param, int uid, int hookType){
 		String argsValue = MethodParser.parseParameters(param);
 		String returnValue = MethodParser.parseReturnValue(param);
 		String className = null;
@@ -597,8 +681,8 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 
 		className = String.format("L%s", className.replace(".", "/"));
 		
-		String logMsg = String.format("{\"Uid\":\"%d\", \"HookType\":\"%s\", \"Customized\":\"true\", " + 
-				"\"InvokeApi\":{\"%s;->%s\":{\"parameters\":{%s}, \"return\":{%s}}}}", 
+		String logMsg = String.format("{\"Basic\":[\"%d\",\"%s\",\"true\"], " + 
+				"\"InvokeApi\":{\"%s;->%s\":[%s], \"return\":{%s}}}}", 
 				uid, hookType, className, methodName, argsValue, returnValue);
 
 		Log.i(Util.LOG_TAG, logMsg);
@@ -619,6 +703,7 @@ public class Launcher implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 			Map.Entry<String, String> entry = (Map.Entry<String, String>) iter.next();
 			XposedHelpers.setStaticObjectField(Build.class, entry.getKey(), entry.getValue());
 		}
+		
 	}
 
 }

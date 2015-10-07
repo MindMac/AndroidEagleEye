@@ -96,9 +96,9 @@ public class CipherHook extends MethodHook {
 		for(int i=0; i<minSize; i++){
 			plainText = Util.toHex(plainByteList.get(i));
 			encryptText = Util.toHex(encryptByteList.get(i));
-			String msg = String.format("{\"Uid\":\"%d\", \"HookType\":\"%s\", \"Customized\":\"false\", \"CryptoUsage\":{\"plaintext\":" +
+			String msg = String.format("{\"Basic\":[\"%d\",\"%d\",\"false\"], \"CryptoUsage\":{\"plaintext\":" +
 					"\"%s\",\"encrypttext\":\"%s\", \"operation\":\"%s\",\"algorithm\":\"%s\",\"id\":\"%d\" }}", 
-					uid, Util.HOOK_SYSTEM_API, plainText, encryptText, operation, algorithm, id);
+					uid, Util.FRAMEWORK_HOOK_SYSTEM_API, plainText, encryptText, operation, algorithm, id);
 			Log.i(Util.LOG_TAG, msg);
 		}
 		
@@ -112,9 +112,9 @@ public class CipherHook extends MethodHook {
 				encryptText = "";
 			else
 				encryptText = Util.toHex(encryptByteList.get(i));
-			String msg = String.format("{\"Uid\":\"%d\", \"HookType\":\"%s\", \"Customized\":\"false\",\"CryptoUsage\":{\"plaintext\":" +
+			String msg = String.format("{\"Basic\":[\"%d\",\"%d\",\"false\"], \"CryptoUsage\":{\"plaintext\":" +
 					"\"%s\",\"encrypttext\":\"%s\", \"operation\":\"%s\",\"algorithm\":\"%s\",\"id\":\"%d\" }}", 
-					uid, Util.HOOK_SYSTEM_API, plainText, encryptText, operation, algorithm, id);
+					uid, Util.FRAMEWORK_HOOK_SYSTEM_API, plainText, encryptText, operation, algorithm, id);
 			Log.i(Util.LOG_TAG, msg);
 		}
 	}
@@ -122,7 +122,7 @@ public class CipherHook extends MethodHook {
 	@Override
 	public void after(MethodHookParam param) throws Throwable {
 		int uid = Binder.getCallingUid();
-		if(!Util.isAppNeedLog(uid))
+		if(!Util.isAppNeedFrLog(uid))
 			return;
 		
 		Cipher cipherInst = (Cipher) param.thisObject;

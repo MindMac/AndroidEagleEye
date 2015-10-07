@@ -4,6 +4,7 @@ import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.mindmac.eagleeye.NativeEntry;
 import com.mindmac.eagleeye.Util;
 
 
@@ -39,20 +40,24 @@ public class IoBridgeHook extends MethodHook {
 		return methodHookList;
 	}
 	
-	private ArrayList<byte[]> extractData(MethodHookParam param){
+	private ArrayList<byte[]> extractData(MethodHookParam param, boolean isRead){
 		ArrayList<byte[]> dataSlices = new ArrayList<byte[]>();
+		int splitCount = 0;
 		
 		byte[] bytes = (byte[]) param.args[1];
 		int byteOffset =  (Integer) param.args[2];
-		int byteCount = (Integer) param.args[3];
+		if(isRead)
+			splitCount = (Integer) param.getResult();
+		else
+			splitCount = (Integer) param.args[3];
 		
-		while(byteCount>0){
-			int targetDataLen = byteCount>Util.DATA_BYTES_TO_LOG ? Util.DATA_BYTES_TO_LOG : byteCount;
+		while(splitCount>0){
+			int targetDataLen = splitCount>Util.DATA_BYTES_TO_LOG ? Util.DATA_BYTES_TO_LOG : splitCount;
 			byte[] targetData = new byte[targetDataLen];
 			for(int i=0; i<targetDataLen; i++)
 				targetData[i] = bytes[byteOffset+i];
 			byteOffset += targetDataLen;
-			byteCount -= targetDataLen;
+			splitCount -= targetDataLen;
 			
 			dataSlices.add(targetData);
 			
@@ -69,7 +74,7 @@ public class IoBridgeHook extends MethodHook {
 		if(uid <= 1000)
 			return;
 		
-		if(!Util.isAppNeedLog(uid))
+		if(!Util.isAppNeedFrLog(uid))
 			return;
 		
 		if(mMethod == Methods.open){
@@ -82,43 +87,34 @@ public class IoBridgeHook extends MethodHook {
 			}
 		}else if(mMethod == Methods.read){			
 			if(param.args.length >= 4){
-				if(Util.pathConvertorClass == null || Util.logFilePathMethod == null)
-					return;
-				
 				FileDescriptor fileDescriptor = (FileDescriptor) param.args[0];
 				int fdInt = Util.getFd(fileDescriptor);
 				int fdId = Util.getTimeId();
 				
-		        if((Boolean) Util.logFilePathMethod.invoke(Util.pathConvertorClass, 
-		        		uid, pid, fdInt, fdId) == false)
+		        if(!NativeEntry.logFilePathFromFd(uid, pid, fdInt, fdId))
 		        	return;
-		        
-		        ArrayList<byte[]> dataSlices = extractData(param);
+		        ArrayList<byte[]> dataSlices = extractData(param, true);
 		        for(int i=0; i<dataSlices.size(); i++){
-			        String logMsg = String.format("{\"Uid\":\"%d\",\"HookType\":\"system_api\", \"Customized\":\"false\"," +
+			        String logMsg = String.format("{\"Basic\"[\"%d\",\"%d\",\"false\"]," +
 			        		"\"FileRW\":{ \"operation\": \"read\",\"data\": \"%s\", \"id\": \"%d\"}}",
-			        		uid, Util.toHex(dataSlices.get(i)), fdId);
+			        		uid, Util.FRAMEWORK_HOOK_SYSTEM_API, Util.toHex(dataSlices.get(i)), fdId);
 					Log.i(Util.LOG_TAG, logMsg);
 		        }
 		        		        
 			}
 		}else if(mMethod == Methods.write){			
-			if(param.args.length >= 4){
-				if(Util.pathConvertorClass == null || Util.logFilePathMethod == null)
-					return;
-					
+			if(param.args.length >= 4){					
 				FileDescriptor fileDescriptor = (FileDescriptor) param.args[0];
 				int fdInt = Util.getFd(fileDescriptor);
 				int fdId = Util.getTimeId();
 				
-				if((Boolean) Util.logFilePathMethod.invoke(Util.pathConvertorClass, 
-		        		uid, pid, fdInt, fdId) == false)
+				if(!NativeEntry.logFilePathFromFd(uid, pid, fdInt, fdId))
 		        	return;
-		        ArrayList<byte[]> dataSlices = extractData(param);
+		        ArrayList<byte[]> dataSlices = extractData(param, false);
 		        for(int i=0; i<dataSlices.size(); i++){
-		        	String logMsg = String.format("{\"Uid\":\"%d\", \"HookType\":\"system_api\", \"Customized\":\"false\"," +
+		        	String logMsg = String.format("{\"Basic\"[\"%d\",\"%d\",\"false\"]," +
 			        		"\"FileRW\":{ \"operation\": \"write\", \"data\": \"%s\", \"id\": \"%d\"}}",
-			        		uid, Util.toHex(dataSlices.get(i)), fdId);
+			        		uid, Util.FRAMEWORK_HOOK_SYSTEM_API, Util.toHex(dataSlices.get(i)), fdId);
 					Log.i(Util.LOG_TAG, logMsg);
 		        }
 			}

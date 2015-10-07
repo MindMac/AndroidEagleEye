@@ -67,9 +67,9 @@ public class SecretKeySpecHook extends MethodHook {
 	    	k = k.substring(0, k.length()-2);
 		}
 		
-		String logMsg = String.format("{\"Uid\":\"%d\", \"HookType\":\"%s\", \"Customized\":\"false\", \"CryptoUsage\": " +
+		String logMsg = String.format("{\"Basic\":[\"%d\",\"%d\",\"false\"], \"CryptoUsage\": " +
 				"{\"operation\": \"keyalgo\", \"key\": \"%s\", \"algorithm\": \"%s\"}}", 
-				uid, Util.HOOK_SYSTEM_API, k, algorithm);
+				uid, Util.FRAMEWORK_HOOK_SYSTEM_API, k, algorithm);
 		
 		Log.i(Util.LOG_TAG, logMsg);
 	}

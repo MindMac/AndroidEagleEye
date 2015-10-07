@@ -51,6 +51,9 @@ public class MainActivity extends Activity {
         // Dynamic load
         dynamicLoad();
         
+        // Native Entry
+        Native.nativeEntry();
+        
     }
 
     @Override

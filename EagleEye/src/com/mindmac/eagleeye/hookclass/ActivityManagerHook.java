@@ -3,9 +3,6 @@ package com.mindmac.eagleeye.hookclass;
 import java.util.ArrayList;
 import java.util.List;
 
-import android.os.Binder;
-import de.robv.android.xposed.XC_MethodHook.MethodHookParam;
-
 public class ActivityManagerHook extends MethodHook {
 	private Methods mMethod = null;
 	
@@ -13,8 +10,6 @@ public class ActivityManagerHook extends MethodHook {
 		super(className, method.name());
 		mMethod = method;
 	}
-
-
 
 	// public List<RecentTaskInfo> getRecentTasks(int maxNum, int flags)
 	// public List<RunningAppProcessInfo> getRunningAppProcesses()

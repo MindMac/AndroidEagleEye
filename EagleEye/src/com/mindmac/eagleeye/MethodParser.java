@@ -71,7 +71,7 @@ public class MethodParser {
 			String argValueStr = "null";
 			if(param.args[i] != null)
 				argValueStr = parseObject(argTypeName, param.args[i]);
-			formattedArgsList.add(String.format("\"%s\":\"%s\"", argTypeName, argValueStr));
+			formattedArgsList.add(String.format("[\"%s\":\"%s\"]", argTypeName, argValueStr));
 		}
 		
 		String formattedArgsStr = TextUtils.join(", ", formattedArgsList.toArray());		

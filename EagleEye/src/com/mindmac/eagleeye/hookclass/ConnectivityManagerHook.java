@@ -37,14 +37,14 @@ public class ConnectivityManagerHook extends MethodHook {
 		return methodHookList;
 	}
 	
-//	public void after(MethodHookParam param) throws Throwable {
-//		
-//		int uid = Binder.getCallingUid();
-//		String argNames = null;
-//		
-//		if(mMethod == Methods.getNetworkInfo)
-//			argNames = "networkType";
-//		
-//		log(uid, param, argNames);
-//	}
+	public void after(MethodHookParam param) throws Throwable {
+		
+		int uid = Binder.getCallingUid();
+		String argNames = null;
+		
+		if(mMethod == Methods.getNetworkInfo)
+			argNames = "networkType";
+		
+		log(uid, param, argNames);
+	}
 }

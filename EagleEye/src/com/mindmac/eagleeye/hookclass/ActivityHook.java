@@ -4,10 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.mindmac.eagleeye.service.Launcher;
-
-
 import android.annotation.SuppressLint;
-import android.os.Binder;
 
 import de.robv.android.xposed.XC_MethodHook.MethodHookParam;
 

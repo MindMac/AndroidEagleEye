@@ -8,8 +8,6 @@ import com.mindmac.eagleeye.service.Launcher;
 
 import android.os.Binder;
 import android.util.Log;
-
-
 import de.robv.android.xposed.XC_MethodHook.MethodHookParam;
 
 public class ClassLoaderHook extends MethodHook {
@@ -41,21 +39,18 @@ public class ClassLoaderHook extends MethodHook {
 		if(uid <= 1000)
 			return;
 		
-		if(!Util.isAppNeedLog(uid))
+		if(!Util.isAppNeedFrLog(uid))
 			return;
 		
 		if(param.args.length != 1)
 			return;
 		
-		if(((String)param.args[0]).equals(Util.PATH_CONVERTOR_CLASS))
-			return;
-		
-		ClassLoader classLoader = (ClassLoader) param.thisObject;
-		if(Util.APP_UN_HOOKED_APIS.size() > 0){
-			ArrayList<String> tmpUnHookedApis = Util.copyArrayList(Util.APP_UN_HOOKED_APIS);
+		if(Util.FRAMEWORK_APP_UN_HOOKED_APIS.size() > 0){
+			ArrayList<String> tmpUnHookedApis = Util.copyArrayList(Util.FRAMEWORK_APP_UN_HOOKED_APIS);
+			Class<?> loadedClass = (Class<?>) param.getResult();
 			for(String methodInfo : tmpUnHookedApis){
-				if(Launcher.hookCustomize(methodInfo, classLoader, Util.HOOK_APP_API))
-					Util.APP_UN_HOOKED_APIS.remove(methodInfo);
+				if(Launcher.hookCustomizeWithKnownClass(methodInfo, loadedClass, Util.FRAMEWORK_HOOK_APP_API))
+					Util.FRAMEWORK_APP_UN_HOOKED_APIS.remove(methodInfo);
 			}
 		}
 

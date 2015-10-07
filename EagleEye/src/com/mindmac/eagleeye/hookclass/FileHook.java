@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.mindmac.eagleeye.MethodParser;
 import com.mindmac.eagleeye.Util;
 
 import android.os.Binder;
@@ -37,7 +38,7 @@ public class FileHook extends MethodHook {
 	// http://developer.android.com/reference/java/lang/Runtime.html
 
 	private enum Methods {
-		delete, deleteOnExit, exists
+		delete, deleteOnExit, exists, listRoots
 	};
 
 	public static List<MethodHook> getMethodHookList() {
@@ -52,7 +53,6 @@ public class FileHook extends MethodHook {
 	@Override
 	public void after(MethodHookParam param) throws Throwable {
 		int uid = Binder.getCallingUid();
-		
 		logSpecial(uid, param);
 	}
 	
@@ -69,8 +69,9 @@ public class FileHook extends MethodHook {
 		if(mMethod == Methods.exists)
 			antiAntiEmu(param, filePath);
 		else{
-			String logMsg = String.format("{\"Uid\":\"%d\", \"HookType\":\"%s\", \"Customized\":\"false\", \"InvokeApi\":{\"%s->%s\":{\"file\":\"%s\"}}}", 
-					uid, Util.HOOK_SYSTEM_API, this.getClassName(), this.getMethodName(), filePath);
+			String returnValue = MethodParser.parseReturnValue(param);
+			String logMsg = String.format("{\"Basic\":[\"%d\", \"%s\",\"false\"], \"InvokeApi\":{\"%s->%s\":{\"file\":\"%s\"},\"return\":[%s]}}", 
+					uid, Util.FRAMEWORK_HOOK_SYSTEM_API, this.getClassName(), this.getMethodName(), filePath, returnValue);
 			Log.i(Util.LOG_TAG, logMsg);
 		}
 	}

@@ -46,7 +46,7 @@ public abstract class MethodHook {
 	}
 	
 	public boolean isNeedLog(int uid){
-		return Util.isAppNeedLog(uid);
+		return Util.isAppNeedFrLog(uid);
 	}
 		
 	protected void log(int uid, MethodHookParam param, String argNames){
@@ -60,8 +60,10 @@ public abstract class MethodHook {
 		String formattedArgs = MethodParser.parseMethodArgs(param, argNamesArray);
 		if(formattedArgs == null)
 			formattedArgs = "";
-		String logMsg = String.format("{\"Uid\":\"%d\", \"HookType\":\"%s\", \"Customized\":\"false\", " +
-				"\"InvokeApi\":{\"%s->%s\":{%s}}}", uid, Util.HOOK_SYSTEM_API, mClassName, mMethodName, formattedArgs);
+		String returnValue = MethodParser.parseReturnValue(param);
+		String logMsg = String.format("{\"Basic\":[\"%d\",\"%s\",\"false\"], " +
+				"\"InvokeApi\":{\"%s->%s\":{%s}, \"return\":{%s}}}", uid, Util.FRAMEWORK_HOOK_SYSTEM_API, 
+				mClassName, mMethodName, formattedArgs, returnValue);
 		Log.i(Util.LOG_TAG, logMsg);
 	}
 	
