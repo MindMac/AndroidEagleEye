@@ -97,6 +97,7 @@ Described as following:
 	* Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
 3. The parameters and return type can be left blank to hook all the APIs or methods with the same method name. For example, you can configure the content line as below to hook all the *putExtra* methods under [Intent](http://developer.android.com/reference/android/content/Intent.html) class:
 	* Landroid/content/Intent;->putExtra
+4. To hook constructors, the scheme is like this *Lpackage/name/class_name;->class_name(parameter_types)*. For example, if you want to hook the Intent constructor *Intent(String action)*, you can specify the configure like this: Landroid/content/Intent;->Intent(Ljava/lang/String;) or Landroid/content/Intent;->Intent to hook all Intent constructors.
 	
 The **native_lib.config** format is very simple. Library names are separated by lines. Each library name should start with key word **lib** and **.so** is **not** needed.
 	
