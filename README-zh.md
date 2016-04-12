@@ -97,6 +97,8 @@ Android EagleEye目前仅考虑了对抗部分模拟器逃逸方法，当然这�
 	* Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
 3. 将参数和返回值类型留空，可以实现对所有具有相同名称的API或方法进行Hook。例如, 通过如下配置可以Hook所有的[Intent](http://developer.android.com/reference/android/content/Intent.html)类下得*putExtra* API：
 	* Landroid/content/Intent;->putExtra
+4. 若需要hook构造函数，则配置格式为*Lpackage/name/class_name;->class_name(parameter_types)*. 例如，若要hook Intent的构造函数 Intent(String action), 可如下配置:
+*Landroid/content/Intent;->Intent(Ljava/lang/String;)* 或者 *Landroid/content/Intent;->Intent*（hook Intent所有的构造函数）。
 	
 **native_lig.config**的格式相对简单。每个库名称一行，且库名称开头需要保留**lib**关键字，文件后缀**.so**则不需要。
 
