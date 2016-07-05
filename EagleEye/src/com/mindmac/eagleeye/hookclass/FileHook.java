@@ -19,7 +19,8 @@ public class FileHook extends MethodHook {
 	private HashMap<String, Boolean> excludedFileMap = new HashMap<String, Boolean>();
 	
 	private String[] excludedFileArray = {"/dev/socket/qemud", "/dev/qemu_pipe", "/sys/qemu_trace",
-			"/system/lib/libc_malloc_debug_qemu.so", "/system/bin/qemu-props"};
+			"/system/lib/libc_malloc_debug_qemu.so", "/system/bin/qemu-props",
+			"/dev/socket/genyd", "/dev/socket/baseband_genyd"};
 	
 	private static final String mClassName = "java.io.File";
 	private Methods mMethod = null;
